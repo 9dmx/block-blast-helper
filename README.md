@@ -2,7 +2,8 @@
 
 A comprehensive tool to help you achieve higher scores in Block Blast! This web application provides optimal block placement suggestions, score calculations, and strategic insights.
 
-<img width="2050" height="1260" alt="image" src="https://github.com/user-attachments/assets/49a37569-6f7d-4c8b-abba-79b8b694c8c9" />
+<img width="2050" height="1173" alt="image" src="https://github.com/user-attachments/assets/7a35d109-d1ca-4ad0-aceb-d9edb4e500f5" />
+
 
 
 ## Features
