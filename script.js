@@ -424,9 +424,22 @@ class BlockBlastHelper {
         let isDragging = false;
         let dragElement = null;
         let lastMoveTime = 0;
+        let startY = 0;
         
-        preview.addEventListener('mousedown', (e) => {
+        // Get coordinates from mouse or touch event
+        const getEventCoords = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        };
+        
+        // Mouse down event
+        const handleStart = (e) => {
             if (!this.selectedBlocks[blockIndex]) return;
+            
+            const coords = getEventCoords(e);
+            startY = coords.y;
             
             isDragging = true;
             this.draggedBlock = this.selectedBlocks[blockIndex];
@@ -435,59 +448,85 @@ class BlockBlastHelper {
             // Create drag element
             dragElement = preview.cloneNode(true);
             dragElement.classList.add('dragging');
-            dragElement.style.left = e.clientX - 40 + 'px';
-            dragElement.style.top = e.clientY - 40 + 'px';
+            dragElement.style.left = coords.x - 40 + 'px';
+            dragElement.style.top = coords.y - 40 + 'px';
             document.body.appendChild(dragElement);
             
             preview.style.opacity = '0.5';
             document.getElementById(`gameBlock${blockIndex + 1}`).classList.add('dragging');
             
+            // Prevent scrolling on mobile
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+                document.body.style.overflow = 'hidden';
+            }
+            
             e.preventDefault();
-        });
+        };
         
-        document.addEventListener('mousemove', (e) => {
+        // Move event
+        const handleMove = (e) => {
             if (!isDragging || !dragElement) return;
             
-            // Throttle mouse move events for better performance
+            // Throttle move events for better performance
             const now = Date.now();
             if (now - lastMoveTime < 16) return; // ~60fps
             lastMoveTime = now;
             
-            dragElement.style.left = e.clientX - 40 + 'px';
-            dragElement.style.top = e.clientY - 40 + 'px';
+            const coords = getEventCoords(e);
+            
+            dragElement.style.left = coords.x - 40 + 'px';
+            dragElement.style.top = coords.y - 40 + 'px';
             
             // Check drop validity
             const gridElement = document.getElementById('gameGrid');
             const gridRect = gridElement.getBoundingClientRect();
             
-            if (e.clientX >= gridRect.left && e.clientX <= gridRect.right &&
-                e.clientY >= gridRect.top && e.clientY <= gridRect.bottom) {
+            if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
+                coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
                 
                 const cellSize = gridRect.width / this.gridSize;
-                const col = Math.floor((e.clientX - gridRect.left) / cellSize);
-                const row = Math.floor((e.clientY - gridRect.top) / cellSize);
+                const col = Math.floor((coords.x - gridRect.left) / cellSize);
+                const row = Math.floor((coords.y - gridRect.top) / cellSize);
                 
                 this.showDropPreview(row, col);
             } else {
                 this.clearDropPreview();
             }
-        });
+            
+            // Prevent scrolling on mobile
+            if (e.type === 'touchmove') {
+                e.preventDefault();
+            }
+        };
         
-        document.addEventListener('mouseup', (e) => {
+        // End event
+        const handleEnd = (e) => {
             if (!isDragging) return;
             
             isDragging = false;
+            
+            // Re-enable scrolling on mobile
+            document.body.style.overflow = '';
+            
+            // Get final coordinates
+            let coords;
+            if (e.type === 'touchend' && e.changedTouches && e.changedTouches.length > 0) {
+                coords = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            } else {
+                coords = getEventCoords(e);
+            }
             
             // Check if dropped on grid
             const gridElement = document.getElementById('gameGrid');
             const gridRect = gridElement.getBoundingClientRect();
             
-            if (e.clientX >= gridRect.left && e.clientX <= gridRect.right &&
-                e.clientY >= gridRect.top && e.clientY <= gridRect.bottom) {
+            if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
+                coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
                 
                 const cellSize = gridRect.width / this.gridSize;
-                const col = Math.floor((e.clientX - gridRect.left) / cellSize);
-                const row = Math.floor((e.clientY - gridRect.top) / cellSize);
+                const col = Math.floor((coords.x - gridRect.left) / cellSize);
+                const row = Math.floor((coords.y - gridRect.top) / cellSize);
                 
                 if (this.canPlaceBlock(row, col, this.draggedBlock.shape)) {
                     this.placeBlockFromDrag(row, col, this.draggedBlockIndex);
@@ -506,6 +545,21 @@ class BlockBlastHelper {
             
             this.draggedBlock = null;
             this.draggedBlockIndex = null;
+        };
+        
+        // Add mouse events
+        preview.addEventListener('mousedown', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+        
+        // Add touch events for mobile
+        preview.addEventListener('touchstart', handleStart, { passive: false });
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', handleEnd);
+        
+        // Prevent context menu on long press
+        preview.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
     }
 
