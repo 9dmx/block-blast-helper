@@ -32,6 +32,12 @@
                 </a>
             </div>
             <h1>Block Blast Helper</h1>
+            <button id="guideButton" class="guide-btn" title="How to Use">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                </svg>
+                <span>Guide</span>
+            </button>
         </header>
 
         <div class="main-grid">
@@ -102,6 +108,65 @@
             });
         });
     </script>
+
+    <!-- Guide Modal -->
+    <div id="guideModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🎮 How to Use Block Blast Helper</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="guide-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>📱 Create Blocks</h3>
+                        <p>Draw your block shapes on the drawing grid by clicking the squares, then click <strong>"Add Block"</strong> to add them to your game.</p>
+                    </div>
+                </div>
+                
+                <div class="guide-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>🎯 Place Blocks</h3>
+                        <p><strong>Desktop:</strong> Drag and drop blocks onto the grid<br>
+                        <strong>Mobile:</strong> Touch and drag blocks to place them</p>
+                    </div>
+                </div>
+                
+                <div class="guide-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>🗑️ Delete Blocks</h3>
+                        <p><strong>Desktop:</strong> Double-click a block to remove it<br>
+                        <strong>Mobile:</strong> Touch and hold a block for 1 second to delete it</p>
+                    </div>
+                </div>
+                
+                <div class="guide-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>🧠 Get Help</h3>
+                        <p>Click <strong>"Get Best Move"</strong> to see the smartest placements. The app will show you the top suggestions with scores!</p>
+                    </div>
+                </div>
+                
+                <div class="guide-step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h3>🎮 Game Tips</h3>
+                        <p>• Try to clear multiple lines at once for bonus points<br>
+                        • Keep the center of the grid clear for larger blocks<br>
+                        • Plan ahead - consider all 3 blocks before placing one</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeGuide" class="guide-close-btn">Got it! 👍</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

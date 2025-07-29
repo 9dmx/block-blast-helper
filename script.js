@@ -407,11 +407,13 @@ class BlockBlastHelper {
     }
 
     addDoubleClickToRemove(blockSlot, blockIndex) {
-        // Remove any existing double-click listener
+        // Remove any existing listeners
         blockSlot.removeEventListener('dblclick', blockSlot._doubleClickHandler);
+        blockSlot.removeEventListener('touchstart', blockSlot._longPressHandler);
+        blockSlot.removeEventListener('touchend', blockSlot._longPressEndHandler);
         
-        // Create new handler function
-        blockSlot._doubleClickHandler = () => {
+        // Create removal function
+        const removeBlock = () => {
             if (this.selectedBlocks[blockIndex]) {
                 // Add smooth disappear animation
                 blockSlot.style.transition = 'all 0.3s ease';
@@ -441,8 +443,67 @@ class BlockBlastHelper {
             }
         };
         
-        // Add the double-click event listener
+        // Double-click for desktop
+        blockSlot._doubleClickHandler = removeBlock;
         blockSlot.addEventListener('dblclick', blockSlot._doubleClickHandler);
+        
+        // Long-press for mobile
+        let longPressTimer = null;
+        let longPressActive = false;
+        
+        blockSlot._longPressHandler = (e) => {
+            // Only handle if there's a block
+            if (!this.selectedBlocks[blockIndex]) return;
+            
+            longPressActive = true;
+            
+            // Visual feedback for long press
+            blockSlot.classList.add('long-press-active');
+            blockSlot.style.transform = 'scale(0.95)';
+            blockSlot.style.transition = 'transform 0.1s ease';
+            
+            // Start long press timer (800ms)
+            longPressTimer = setTimeout(() => {
+                if (longPressActive) {
+                    // Add vibration if available (mobile)
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate(50);
+                    }
+                    
+                    // Remove visual feedback before showing confirmation
+                    blockSlot.classList.remove('long-press-active');
+                    blockSlot.style.transform = '';
+                    blockSlot.style.transition = '';
+                    
+                    // Show confirmation
+                    const confirmation = confirm('Delete this block?');
+                    if (confirmation) {
+                        removeBlock();
+                    }
+                }
+            }, 800);
+            
+            e.preventDefault();
+        };
+        
+        blockSlot._longPressEndHandler = (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+            longPressActive = false;
+            
+            // Reset visual state
+            blockSlot.classList.remove('long-press-active');
+            blockSlot.style.transform = '';
+            blockSlot.style.transition = '';
+        };
+        
+        // Add touch events for long press
+        blockSlot.addEventListener('touchstart', blockSlot._longPressHandler, { passive: false });
+        blockSlot.addEventListener('touchend', blockSlot._longPressEndHandler);
+        blockSlot.addEventListener('touchcancel', blockSlot._longPressEndHandler);
+        blockSlot.addEventListener('touchmove', blockSlot._longPressEndHandler);
     }
 
     addDragListeners(preview, blockIndex) {
@@ -1050,6 +1111,52 @@ class BlockBlastHelper {
         document.getElementById('runMoves').addEventListener('click', () => {
             this.executePendingMoves();
         });
+
+        // Guide button and modal
+        this.setupGuideModal();
+    }
+
+    setupGuideModal() {
+        const guideButton = document.getElementById('guideButton');
+        const guideModal = document.getElementById('guideModal');
+        const closeModal = document.querySelector('.close-modal');
+        const closeGuide = document.getElementById('closeGuide');
+
+        // Show modal when guide button is clicked
+        guideButton.addEventListener('click', () => {
+            guideModal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        });
+
+        // Close modal when X is clicked
+        closeModal.addEventListener('click', () => {
+            this.closeGuideModal();
+        });
+
+        // Close modal when "Got it!" button is clicked
+        closeGuide.addEventListener('click', () => {
+            this.closeGuideModal();
+        });
+
+        // Close modal when clicking outside of it
+        guideModal.addEventListener('click', (e) => {
+            if (e.target === guideModal) {
+                this.closeGuideModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && guideModal.style.display === 'block') {
+                this.closeGuideModal();
+            }
+        });
+    }
+
+    closeGuideModal() {
+        const guideModal = document.getElementById('guideModal');
+        guideModal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
     }
 }
 
