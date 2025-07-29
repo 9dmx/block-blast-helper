@@ -3,6 +3,7 @@ class BlockBlastHelper {
         this.gridSize = 8;
         this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(0));
         this.selectedBlocks = [null, null, null];
+        this.score = 0; // Track current score
         this.blockShapes = {
             // Single block
             single: [[1]],
@@ -75,6 +76,23 @@ class BlockBlastHelper {
         this.loadSavedBoard();
         this.attachEventListeners();
         this.updateRestoreButtonState();
+        
+        // Add some test blocks for easier testing
+        this.addTestBlocks();
+    }
+
+    addTestBlocks() {
+        // Add a few simple blocks for testing
+        this.selectedBlocks[0] = { shape: this.blockShapes.single };
+        this.selectedBlocks[1] = { shape: this.blockShapes.line2h };
+        this.selectedBlocks[2] = { shape: this.blockShapes.square2 };
+        
+        // Update the display for each block
+        for (let i = 0; i < 3; i++) {
+            if (this.selectedBlocks[i]) {
+                this.updateGameBlockPreview(i, this.selectedBlocks[i].shape);
+            }
+        }
     }
 
     createGrid() {
@@ -340,12 +358,19 @@ class BlockBlastHelper {
         const blockSlot = document.getElementById(`gameBlock${slot + 1}`);
         
         preview.innerHTML = '';
+        
+        if (!shape) {
+            // Clear the block slot
+            blockSlot.classList.remove('has-block');
+            return;
+        }
+        
         blockSlot.classList.add('has-block');
         
         const dragBlock = this.createDragBlock(shape);
         preview.appendChild(dragBlock);
         
-        // Add drag functionality
+        // Add touch/click functionality
         this.addDragListeners(preview, slot);
         
         // Add double-click to remove block
@@ -423,8 +448,8 @@ class BlockBlastHelper {
     addDragListeners(preview, blockIndex) {
         let isDragging = false;
         let dragElement = null;
-        let lastMoveTime = 0;
-        let startY = 0;
+        let startTouch = null;
+        let hasMoved = false;
         
         // Get coordinates from mouse or touch event
         const getEventCoords = (e) => {
@@ -434,130 +459,135 @@ class BlockBlastHelper {
             return { x: e.clientX, y: e.clientY };
         };
         
-        // Mouse down event
         const handleStart = (e) => {
             if (!this.selectedBlocks[blockIndex]) return;
             
             const coords = getEventCoords(e);
-            startY = coords.y;
+            startTouch = coords;
+            hasMoved = false;
             
-            isDragging = true;
-            this.draggedBlock = this.selectedBlocks[blockIndex];
-            this.draggedBlockIndex = blockIndex;
-            
-            // Create drag element
-            dragElement = preview.cloneNode(true);
-            dragElement.classList.add('dragging');
-            dragElement.style.left = coords.x - 40 + 'px';
-            dragElement.style.top = coords.y - 40 + 'px';
-            document.body.appendChild(dragElement);
-            
-            preview.style.opacity = '0.5';
-            document.getElementById(`gameBlock${blockIndex + 1}`).classList.add('dragging');
-            
-            // Prevent scrolling on mobile
+            // For touch events, prevent default scrolling
             if (e.type === 'touchstart') {
                 e.preventDefault();
+                // Disable scrolling on the body
                 document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
             }
-            
-            e.preventDefault();
         };
         
-        // Move event
         const handleMove = (e) => {
-            if (!isDragging || !dragElement) return;
-            
-            // Throttle move events for better performance
-            const now = Date.now();
-            if (now - lastMoveTime < 16) return; // ~60fps
-            lastMoveTime = now;
+            if (!startTouch) return;
             
             const coords = getEventCoords(e);
+            const deltaX = Math.abs(coords.x - startTouch.x);
+            const deltaY = Math.abs(coords.y - startTouch.y);
             
-            dragElement.style.left = coords.x - 40 + 'px';
-            dragElement.style.top = coords.y - 40 + 'px';
-            
-            // Check drop validity
-            const gridElement = document.getElementById('gameGrid');
-            const gridRect = gridElement.getBoundingClientRect();
-            
-            if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
-                coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
+            // If moved more than 10px, start dragging
+            if (!isDragging && (deltaX > 10 || deltaY > 10)) {
+                isDragging = true;
+                hasMoved = true;
                 
-                const cellSize = gridRect.width / this.gridSize;
-                const col = Math.floor((coords.x - gridRect.left) / cellSize);
-                const row = Math.floor((coords.y - gridRect.top) / cellSize);
+                this.draggedBlock = this.selectedBlocks[blockIndex];
+                this.draggedBlockIndex = blockIndex;
                 
-                this.showDropPreview(row, col);
-            } else {
-                this.clearDropPreview();
+                // Create drag element
+                dragElement = preview.cloneNode(true);
+                dragElement.classList.add('dragging');
+                dragElement.style.position = 'fixed';
+                dragElement.style.left = coords.x - 40 + 'px';
+                dragElement.style.top = coords.y - 40 + 'px';
+                dragElement.style.zIndex = '9999';
+                dragElement.style.pointerEvents = 'none';
+                document.body.appendChild(dragElement);
+                
+                preview.style.opacity = '0.5';
+                document.getElementById(`gameBlock${blockIndex + 1}`).classList.add('dragging');
             }
             
-            // Prevent scrolling on mobile
+            if (isDragging && dragElement) {
+                dragElement.style.left = coords.x - 40 + 'px';
+                dragElement.style.top = coords.y - 40 + 'px';
+                
+                // Check for valid drop zone
+                const gridElement = document.getElementById('gameGrid');
+                const gridRect = gridElement.getBoundingClientRect();
+                
+                if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
+                    coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
+                    
+                    const cellSize = gridRect.width / this.gridSize;
+                    const col = Math.floor((coords.x - gridRect.left) / cellSize);
+                    const row = Math.floor((coords.y - gridRect.top) / cellSize);
+                    
+                    this.showDropPreview(row, col);
+                } else {
+                    this.clearDropPreview();
+                }
+            }
+            
             if (e.type === 'touchmove') {
                 e.preventDefault();
             }
         };
         
-        // End event
         const handleEnd = (e) => {
-            if (!isDragging) return;
+            // Re-enable scrolling
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
+            
+            if (isDragging) {
+                const coords = getEventCoords(e.type === 'touchend' ? e.changedTouches[0] : e);
+                
+                // Check if dropped on grid
+                const gridElement = document.getElementById('gameGrid');
+                const gridRect = gridElement.getBoundingClientRect();
+                
+                if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
+                    coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
+                    
+                    const cellSize = gridRect.width / this.gridSize;
+                    const col = Math.floor((coords.x - gridRect.left) / cellSize);
+                    const row = Math.floor((coords.y - gridRect.top) / cellSize);
+                    
+                    if (this.canPlaceBlock(row, col, this.draggedBlock.shape)) {
+                        this.placeBlockFromDrag(row, col, this.draggedBlockIndex);
+                    }
+                }
+                
+                // Cleanup
+                if (dragElement) {
+                    document.body.removeChild(dragElement);
+                    dragElement = null;
+                }
+                
+                preview.style.opacity = '1';
+                document.getElementById(`gameBlock${this.draggedBlockIndex + 1}`).classList.remove('dragging');
+                this.clearDropPreview();
+                
+                this.draggedBlock = null;
+                this.draggedBlockIndex = null;
+            }
             
             isDragging = false;
-            
-            // Re-enable scrolling on mobile
-            document.body.style.overflow = '';
-            
-            // Get final coordinates
-            let coords;
-            if (e.type === 'touchend' && e.changedTouches && e.changedTouches.length > 0) {
-                coords = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-            } else {
-                coords = getEventCoords(e);
-            }
-            
-            // Check if dropped on grid
-            const gridElement = document.getElementById('gameGrid');
-            const gridRect = gridElement.getBoundingClientRect();
-            
-            if (coords.x >= gridRect.left && coords.x <= gridRect.right &&
-                coords.y >= gridRect.top && coords.y <= gridRect.bottom) {
-                
-                const cellSize = gridRect.width / this.gridSize;
-                const col = Math.floor((coords.x - gridRect.left) / cellSize);
-                const row = Math.floor((coords.y - gridRect.top) / cellSize);
-                
-                if (this.canPlaceBlock(row, col, this.draggedBlock.shape)) {
-                    this.placeBlockFromDrag(row, col, this.draggedBlockIndex);
-                }
-            }
-            
-            // Cleanup
-            if (dragElement) {
-                document.body.removeChild(dragElement);
-                dragElement = null;
-            }
-            
-            preview.style.opacity = '1';
-            document.getElementById(`gameBlock${this.draggedBlockIndex + 1}`).classList.remove('dragging');
-            this.clearDropPreview();
-            
-            this.draggedBlock = null;
-            this.draggedBlockIndex = null;
+            startTouch = null;
+            hasMoved = false;
         };
         
-        // Add mouse events
+        // Mouse events
         preview.addEventListener('mousedown', handleStart);
         document.addEventListener('mousemove', handleMove);
         document.addEventListener('mouseup', handleEnd);
         
-        // Add touch events for mobile
+        // Touch events with proper mobile handling
         preview.addEventListener('touchstart', handleStart, { passive: false });
         document.addEventListener('touchmove', handleMove, { passive: false });
-        document.addEventListener('touchend', handleEnd);
+        document.addEventListener('touchend', handleEnd, { passive: false });
         
-        // Prevent context menu on long press
+        // Prevent context menu
         preview.addEventListener('contextmenu', (e) => {
             e.preventDefault();
         });
@@ -606,41 +636,31 @@ class BlockBlastHelper {
             }
         }
         
-        // Clear lines
-        this.clearLines();
+        // Update score
+        this.score += block.shape.flat().filter(cell => cell).length * 10;
+        
+        // Clear lines and get bonus
+        const linesCleared = this.clearLines();
+        if (linesCleared > 0) {
+            this.score += linesCleared * linesCleared * 100;
+        }
         
         // Remove the used block
-        this.removeUsedGameBlock(blockIndex);
+        this.selectedBlocks[blockIndex] = null;
+        this.updateGameBlockPreview(blockIndex, null);
         
-        // Update display and auto-save
+        // Update displays
         this.updateGridDisplay();
+        this.updateScore();
         this.autoSaveBoard();
-        
-        // Update suggestions
-        setTimeout(() => {
-            this.showBestMoves();
-        }, 500);
     }
 
-    removeUsedGameBlock(blockIndex) {
-        const blockSlot = document.getElementById(`gameBlock${blockIndex + 1}`);
-        const preview = document.getElementById(`gamePreview${blockIndex + 1}`);
-        
-        // Add smooth disappear animation
-        blockSlot.style.transition = 'all 0.3s ease';
-        blockSlot.style.opacity = '0';
-        blockSlot.style.transform = 'scale(0.8)';
-        
-        // Clear the block data
-        this.selectedBlocks[blockIndex] = null;
-        
-        // Reset the block after animation
-        setTimeout(() => {
-            blockSlot.classList.remove('has-block');
-            preview.innerHTML = '';
-            blockSlot.style.opacity = '1';
-            blockSlot.style.transform = 'scale(1)';
-        }, 300);
+    updateScore() {
+        // Update score display if it exists
+        const scoreElement = document.getElementById('score');
+        if (scoreElement) {
+            scoreElement.textContent = this.score;
+        }
     }
 
     updateBlockPreview(slot, shape) {

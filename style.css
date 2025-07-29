@@ -201,6 +201,31 @@ header h1 {
     pointer-events: none;
 }
 
+/* Touch-and-click selection styles */
+.selected-for-placement {
+    border: 3px solid #4CAF50 !important;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.6) !important;
+    transform: scale(1.05);
+    z-index: 100;
+}
+
+.block-slot.selected-for-placement {
+    background: rgba(76, 175, 80, 0.2) !important;
+}
+
+.game-block-preview.selected-for-placement {
+    animation: selected-pulse 1.5s infinite;
+}
+
+@keyframes selected-pulse {
+    0%, 100% { 
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+    }
+    50% { 
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.9);
+    }
+}
+
 .drag-block {
     display: grid;
     gap: 2px;
